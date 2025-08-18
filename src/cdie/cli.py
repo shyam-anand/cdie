@@ -2,10 +2,8 @@ import argparse
 import pathlib
 
 from cdie import loggingconfig
-
-from cdie.reports import reportgenerator
-from cdie.reports import requestid
 from cdie.ingestion import pipeline as ingestion_pipeline
+from cdie.reports import reportgenerator, requestid
 
 logger = loggingconfig.get_logger(__name__)
 

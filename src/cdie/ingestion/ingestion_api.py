@@ -1,7 +1,9 @@
 import logging
-from fastapi import APIRouter, BackgroundTasks, File, UploadFile, HTTPException, status, Query
-from cdie.ingestion import pipeline as ingestion_pipeline
+
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
+
 from cdie.ingestion import file_uploader
+from cdie.ingestion import pipeline as ingestion_pipeline
 from cdie.reports import requestid
 
 logger = logging.getLogger(__name__)

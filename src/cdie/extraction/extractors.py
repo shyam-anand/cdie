@@ -1,10 +1,12 @@
 import logging
+
+import spacy
+from spacy.language import Language
+
 from cdie.extraction.auditdate import AuditDateExtractor
 from cdie.extraction.auditor import AuditorExtractor
 from cdie.extraction.findings import FindingsExtractor
 from cdie.extraction.suppliers import SupplierExtractor
-import spacy
-from spacy.language import Language
 
 logger = logging.getLogger(__name__)
 

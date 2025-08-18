@@ -22,6 +22,7 @@ The verbosity level can be controlled using command line arguments:
 import logging
 from argparse import ArgumentParser
 from typing import Optional
+
 from cdie import config
 
 # Create a parser instance that can be used by other modules

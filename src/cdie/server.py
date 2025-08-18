@@ -1,7 +1,8 @@
 import argparse
 
-from cdie import config, loggingconfig
 import uvicorn.config
+
+from cdie import config, loggingconfig
 
 logger = loggingconfig.get_logger(__name__)
 

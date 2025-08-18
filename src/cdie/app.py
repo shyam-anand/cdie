@@ -1,9 +1,9 @@
+import logging
+
 from fastapi import FastAPI
 
 from cdie.ingestion import ingestion_api
 from cdie.reports import reports_api
-
-import logging
 
 logger = logging.getLogger(__name__)
 

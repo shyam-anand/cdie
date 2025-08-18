@@ -76,7 +76,10 @@ class ReportGenerator:
         )
 
     def _get_auditor(self) -> audit.Auditor | None:
-        """Returns the best auditor candidate by confidence, and attempts to fill in missing fields."""
+        """
+        Returns the best auditor candidate by confidence, and attempts to fill in missing
+        fields.
+        """
         candidates = list(
             self._get_candidates_above_threshold("Auditor", audit.Auditor.model_validate)
         )

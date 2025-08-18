@@ -1,8 +1,7 @@
 import json
+import logging
 import pathlib
 from typing import Any
-
-import logging
 
 from cdie import config
 

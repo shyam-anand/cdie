@@ -10,7 +10,6 @@ from cdie.extraction.extractor import Extractor
 from cdie.extraction.regexps import COMPANY_NAME
 from cdie.models import audit
 
-
 SUPPLIER_KEYWORDS_REGEXP = [
     re.compile(regexp, re.IGNORECASE)
     for regexp in [

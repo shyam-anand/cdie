@@ -1,8 +1,8 @@
 import pathlib
+
 from fastapi import UploadFile
 
 from cdie import config
-
 
 UPLOAD_DIR = config.DATA_ROOT / "upload"
 if not UPLOAD_DIR.exists():

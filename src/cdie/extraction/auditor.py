@@ -4,10 +4,10 @@ from typing import Iterable
 from spacy.language import Language
 from spacy.tokens import Doc
 
+from cdie.extraction import regexps
 from cdie.extraction.confidence import ConfidenceCriteria
 from cdie.extraction.extractor import Extractor
 from cdie.models import audit
-from cdie.extraction import regexps
 
 AUDITOR_KEYWORDS = [
     "auditor",

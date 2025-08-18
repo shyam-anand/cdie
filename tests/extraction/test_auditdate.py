@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cdie.extraction.extractors.auditdate import DATE_REGEXES, AuditDateExtractor
+from cdie.extraction.auditdate import DATE_REGEXES, AuditDateExtractor
 
 
 class TestAuditDateExtractor:

@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from cdie.extraction.extractors.findings import FINDING_KEYWORDS, FindingsExtractor
+from cdie.extraction.findings import FINDING_KEYWORDS, FindingsExtractor
 from cdie.models.audit import FindingType
 
 

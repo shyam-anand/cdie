@@ -16,6 +16,10 @@ dependencies = [
     "pytest>=8.4.1",
     "pandas>=2.3.1",
     "ruff>=0.12.9",
+    "fastapi>=0.116.1",
+    "uvicorn>=0.35.0",
+    "dotenv>=0.9.9",
+    "python-multipart>=0.0.20",
 ]
 
 [project.optional-dependencies]
@@ -26,7 +30,8 @@ test = [
 ]
 
 [project.scripts]
-cdie = "cdie:main"
+cli = "cdie:cli"
+server = "cdie:server"
 
 [build-system]
 requires = ["hatchling"]

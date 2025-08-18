@@ -22,6 +22,7 @@ The verbosity level can be controlled using command line arguments:
 import logging
 from argparse import ArgumentParser
 from typing import Optional
+from cdie import config
 
 # Create a parser instance that can be used by other modules
 # We use add_help=False to avoid conflicts with the main application's argument parser
@@ -72,11 +73,11 @@ def _get_log_level(verbosity: int) -> int:
     """
 
     def get_env_log_level() -> int:
-        # if env_log_level := config.get_config("LOG_LEVEL"):
-        #     return {
-        #         "INFO": 1,
-        #         "DEBUG": 2,
-        #     }.get(env_log_level, 0)
+        if env_log_level := config.get_config("LOG_LEVEL"):
+            return {
+                "INFO": 1,
+                "DEBUG": 2,
+            }.get(env_log_level, 0)
         return 0
 
     log_level = verbosity or get_env_log_level()
@@ -143,10 +144,9 @@ root_logger.propagate = False
 root_logger.debug("Verbosity level set to %s", logging.getLevelName(root_logger.level))
 
 # Log levels for individual modules
-logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("pdfminer").setLevel(logging.WARNING)
+logging.getLogger("pdfplumber").setLevel(logging.WARNING)
+logging.getLogger("python_multipart").setLevel(logging.WARNING)
 
 
 def get_log_level() -> int:

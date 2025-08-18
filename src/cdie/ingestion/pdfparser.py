@@ -1,52 +1,21 @@
 import logging
 import pathlib
 import re
-from typing import AsyncGenerator, Iterable, Literal
+from typing import Iterable
 
 import pdfplumber
-import spacy
 from pdfplumber.pdf import PDF
 from pdfplumber.table import Table
-from spacy.language import Language
 
 from cdie import config
-from cdie.extraction import extractor
-from cdie.extraction.auditdate import AuditDateExtractor
-from cdie.extraction.auditor import AuditorExtractor
-from cdie.extraction.findings import FindingsExtractor
-from cdie.extraction.suppliers import SupplierExtractor
 
 logger = logging.getLogger(__name__)
 
-RESOURCE_DIR = config.RESOURCES_ROOT / "files"
+
 NON_LATIN_RE = re.compile(r"[^\x00-\x7f]")
 
-nlp: Language | None = None
 
-
-def get_nlp() -> Language:
-    global nlp
-    if nlp is None:
-        # enable only Named Entity Recognition
-        nlp = spacy.load("en_core_web_sm", exclude=["attribute_ruler", "lemmatizer"])
-        nlp.add_pipe("sentencizer")
-        logger.info("nlp loaded")
-    return nlp
-
-
-ExtractorTypes = Literal["auditor", "date", "supplier", "findings"]
-
-
-class Extractor:
-    def __init__(self, nlp: Language | None = None):
-        self.nlp = nlp or get_nlp()
-        self._extractors = {
-            "auditor": AuditorExtractor(self.nlp),
-            "date": AuditDateExtractor(self.nlp),
-            "supplier": SupplierExtractor(self.nlp),
-            "findings": FindingsExtractor(self.nlp),
-        }
-
+class PdfParser:
     def extract_tables_from_page(self, tables: list[Table]) -> Iterable[list[str]]:
         for table in tables:
             table_rows = table.extract()
@@ -77,9 +46,7 @@ class Extractor:
             logger.error(f"Error extracting text from {pdf}: {e}")
 
     def _open_pdf_file(self, file_path: pathlib.Path) -> PDF:
-        """Open a PDF file and return a PDF object."""
-
-        file_path = RESOURCE_DIR / file_path if not file_path.is_absolute() else file_path
+        file_path = config.APP_ROOT / file_path if not file_path.is_absolute() else file_path
         if not file_path.exists():
             raise FileNotFoundError(f"File {file_path} not found")
         if not file_path.suffix == ".pdf":
@@ -88,11 +55,10 @@ class Extractor:
         logger.info(f"Opening {file_path}")
         return pdfplumber.open(file_path)
 
-    async def extract_info(
+    def parse(
         self,
         file_path: pathlib.Path,
-        extract_types: list[ExtractorTypes] = ["auditor", "date", "supplier", "findings"],
-    ) -> AsyncGenerator[extractor.Extracted, None]:
+    ) -> Iterable[str]:
         pdf = self._open_pdf_file(file_path)
         logger.info(f"Extracting from {file_path} ")
 
@@ -101,8 +67,5 @@ class Extractor:
                 continue
 
             logger.debug(f"Processing text: {text[:500]}")
-            doc = self.nlp(text)
 
-            for extractor_type in extract_types:
-                for candidate in self._extractors[extractor_type].extract(doc):
-                    yield candidate
+            yield text

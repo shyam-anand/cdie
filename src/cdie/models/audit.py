@@ -1,9 +1,8 @@
 import abc
 import datetime
-from enum import Enum, auto
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel
+from pydantic import AfterValidator, BaseModel, field_serializer
 
 
 def name_validator(v: str | None) -> str | None:
@@ -14,6 +13,10 @@ def name_validator(v: str | None) -> str | None:
 
 class Extracted(abc.ABC, BaseModel):
     confidence: float
+
+    @field_serializer("confidence")
+    def serialize_confidence(self, v: float) -> float:
+        return round(v, 5)
 
 
 class Organization(BaseModel):
@@ -38,7 +41,7 @@ class Finding(Extracted):
     issue: str
 
 
-class Audit(BaseModel):
+class AuditReport(BaseModel):
     auditor: Auditor | None = None
     audit_date: AuditDate | None = None
     suppliers: list[Supplier] = []

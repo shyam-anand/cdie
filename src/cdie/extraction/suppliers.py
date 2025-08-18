@@ -6,14 +6,11 @@ from spacy.language import Language
 from spacy.tokens import Doc
 
 from cdie.extraction.confidence import Confidence, ConfidenceCriteria
-from cdie.extraction.extractors.extractor import Extractor
+from cdie.extraction.extractor import Extractor
+from cdie.extraction.regexps import COMPANY_NAME
 from cdie.models import audit
 
-COMPANY_NAME_REGEXP = re.compile(
-    r"((\b(?:[A-Z][a-zA-Z&]+(?:\s+[A-Z][a-zA-Z&]+|\ &|\sand)*)\s+)+"
-    r"(?:(?:Ltd|Limited|Inc|Corporation|Co|Company)[\.,]*\s*)+\b)",
-    re.MULTILINE,
-)
+
 SUPPLIER_KEYWORDS_REGEXP = [
     re.compile(regexp, re.IGNORECASE)
     for regexp in [
@@ -35,9 +32,9 @@ logger = logging.getLogger(__name__)
 class SupplierExtractor(Extractor[audit.Supplier]):
     def __init__(self, nlp: Language):
         confidence = Confidence()
-        confidence.set_score(ConfidenceCriteria.REGEX_MATCH, 0.3)
-        confidence.set_score(ConfidenceCriteria.NEAR_KEYWORD, 0.3)
-        confidence.set_score(ConfidenceCriteria.NER_MATCH, 0.1)
+        confidence.set_weight(ConfidenceCriteria.REGEX_MATCH, 0.0)
+        confidence.set_weight(ConfidenceCriteria.NEAR_KEYWORD, 0.3)
+        confidence.set_weight(ConfidenceCriteria.NER_MATCH, 0.1)
         super().__init__(nlp, confidence=confidence)
 
     def nearest_keyword_with_indices(
@@ -67,31 +64,28 @@ class SupplierExtractor(Extractor[audit.Supplier]):
 
     def extract(self, doc: Doc) -> Generator[audit.Supplier, None, None]:
         keywords = self._get_keywords(doc.text)
-        logger.info(f"keywords: {keywords}")
+        logger.debug(f"keywords: {keywords}")
 
         if not keywords:
-            logger.info("No supplier keywords found")
+            logger.debug("No supplier keywords found")
             return
 
-        for regex_match in COMPANY_NAME_REGEXP.finditer(doc.text):
-            organization = audit.Organization(name=regex_match.group(0))
+        for regex_match in COMPANY_NAME.finditer(doc.text):
+            name = regex_match.group(0)
 
-            entities = self.nlp(organization.name).ents
-            entity_label = next(
+            entities = self.nlp(name).ents
+
+            ner_label = next(
                 (ent.label_ for ent in entities if ent.label_ == "ORG" or ent.label_ == "PERSON"),
                 None,
             )
+            logger.info(f"Found {ner_label}: '{name}'")
 
-            logger.info(f"Found {entity_label}: '{organization.name}'")
-            nearest_keyword, distance = self.nearest_keyword_with_indices(
-                doc.text, organization.name, keywords
-            )
+            nearest_keyword, distance = self.nearest_keyword_with_indices(doc.text, name, keywords)
             if distance < 0:
                 continue
-            criteria = (
-                ConfidenceCriteria.REGEX_MATCH
-                | (ConfidenceCriteria.NEAR_KEYWORD if bool(nearest_keyword) else 0)
-                | (ConfidenceCriteria.NER_MATCH if entity_label else 0)
+            criteria = (ConfidenceCriteria.NEAR_KEYWORD if bool(nearest_keyword) else 0) | (
+                ConfidenceCriteria.NER_MATCH if ner_label else 0
             )
             confidence = self.confidence.calculate(
                 criteria=criteria,
@@ -101,7 +95,7 @@ class SupplierExtractor(Extractor[audit.Supplier]):
             )
             if confidence > self.confidence_threshold:
                 yield audit.Supplier(
-                    organization=organization,
+                    organization=audit.Organization(name=name),
                     type=nearest_keyword,
                     confidence=confidence,
                 )

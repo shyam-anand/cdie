@@ -17,19 +17,23 @@ from spacy.tokens import Doc
 
 from cdie.extraction import rulesets
 from cdie.extraction.confidence import Confidence, ConfidenceCriteria
-from cdie.extraction.extractors.extractor import Extractor
+from cdie.extraction.extractor import Extractor
 from cdie.models import audit
 
 logger = logging.getLogger(__name__)
 
-BASE_SCORE = 0.0
 
 FINDING_KEYWORDS = rulesets.load_ruleset("findings")
 
 
 class FindingsExtractor(Extractor[audit.Finding]):
     def __init__(self, nlp: Language):
-        confidence = Confidence(base=BASE_SCORE, penalize=False)
+        confidence = Confidence()
+        confidence.set_weight(ConfidenceCriteria.NEAR_KEYWORD, 0.5)
+        # No regex or NER for findings
+        confidence.set_weight(ConfidenceCriteria.REGEX_MATCH, 0.0)
+        confidence.set_weight(ConfidenceCriteria.NER_MATCH, 0.0)
+
         super().__init__(nlp, confidence=confidence)
         self.max_distance = 700
 

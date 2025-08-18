@@ -2,8 +2,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cdie.extraction.extractors.suppliers import (
-    COMPANY_NAME_REGEXP,
+from cdie.extraction.suppliers import (
+    COMPANY_NAME,
     ORG_KEYWORDS,
     SupplierExtractor,
 )
@@ -218,8 +218,8 @@ class TestOrganizationExtractor:
 
     def test_regex_pattern_defined(self):
         """Test that regex pattern is properly defined"""
-        assert isinstance(COMPANY_NAME_REGEXP, str)
-        assert len(COMPANY_NAME_REGEXP) > 0
+        assert isinstance(COMPANY_NAME, str)
+        assert len(COMPANY_NAME) > 0
 
     def test_ner_vs_regex_priority(self):
         """Test that NER entities take priority over regex matches"""

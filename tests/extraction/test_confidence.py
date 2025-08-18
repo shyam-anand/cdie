@@ -1,4 +1,4 @@
-from src.cdie.extraction.confidence import Confidence, ConfidenceCriteria
+from cdie.extraction.confidence import Confidence, ConfidenceCriteria
 
 
 class TestConfidence:

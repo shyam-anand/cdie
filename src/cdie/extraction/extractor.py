@@ -1,6 +1,6 @@
 import abc
 import logging
-from typing import Generator, Generic, TypeVar
+from typing import Generic, Iterable, NamedTuple, TypeVar
 
 from spacy.language import Language
 from spacy.tokens import Doc
@@ -12,14 +12,18 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T", bound=Extracted)
 
-CONFIDENCE_THRESHOLD = 0.5
+DEFAULT_CONFIDENCE_THRESHOLD = 0.5
+
+NearestKeyword = NamedTuple("NearestKeyword", [("keyword", str | None), ("distance", int)])
+
+no_nearest_keyword = NearestKeyword(None, -1)
 
 
 class Extractor(abc.ABC, Generic[T]):
     def __init__(
         self,
         nlp: Language,
-        confidence_threshold: float = CONFIDENCE_THRESHOLD,
+        confidence_threshold: float = DEFAULT_CONFIDENCE_THRESHOLD,
         confidence: Confidence = Confidence(),
     ):
         self.nlp = nlp
@@ -41,9 +45,9 @@ class Extractor(abc.ABC, Generic[T]):
         word: str,
         keyword_list: list[str],
         max_distance: int = 400,
-    ) -> list[tuple[str, int]]:
+    ) -> list[NearestKeyword]:
         lower_text = full_text.lower()
-        matched_keywords: list[tuple[str, int]] = []
+        matched_keywords: list[NearestKeyword] = []
         for kw in keyword_list:
             if kw in lower_text:
                 word_at = lower_text.find(word.lower())
@@ -51,7 +55,7 @@ class Extractor(abc.ABC, Generic[T]):
                 distance = self._distance(word_at, word_at + len(word), kw_at, kw_at + len(kw))
                 logger.info(f"Keyword '{kw}' found at {distance}")
                 if distance <= max_distance:
-                    matched_keywords.append((kw, distance))
+                    matched_keywords.append(NearestKeyword(kw, distance))
         return matched_keywords
 
     def nearest_keyword(
@@ -60,7 +64,7 @@ class Extractor(abc.ABC, Generic[T]):
         word: str,
         keyword_list: list[str],
         max_distance: int = 400,
-    ) -> tuple[str | None, int]:
+    ) -> NearestKeyword:
         """
         Find the nearest keyword to the word in the full text.
         """
@@ -69,8 +73,8 @@ class Extractor(abc.ABC, Generic[T]):
             nearest_keyword = min(matched_keywords, key=lambda x: x[1])
             logger.info(f"Nearest keyword: {nearest_keyword}")
             return nearest_keyword
-        return None, -1
+        return no_nearest_keyword
 
     @abc.abstractmethod
-    def extract(self, doc: Doc) -> Generator[T, None, None]:
+    def extract(self, doc: Doc) -> Iterable[T]:
         pass

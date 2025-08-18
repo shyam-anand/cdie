@@ -2,7 +2,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from cdie.extraction.extractors.auditor import AUDITOR_KEYWORDS, AuditorExtractor
+from cdie.extraction.auditor import AUDITOR_KEYWORDS, AuditorExtractor
 
 
 class TestAuditorExtractor:

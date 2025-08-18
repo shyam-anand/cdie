@@ -5,12 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Module",
+            "name": "CLI",
             "type": "debugpy",
             "request": "launch",
-            "program": "${workspaceFolder}/src/cdie/extraction/extract.py",
+            "program": "${workspaceFolder}/src/cdie/cli.py",
             "console": "integratedTerminal",
             "args": "${command:pickArgs}",
-        }
+        },
+        {
+            "name": "Server",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/cdie/server.py",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}",
+        },
     ]
 }

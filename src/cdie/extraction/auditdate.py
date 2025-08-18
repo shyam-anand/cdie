@@ -9,12 +9,10 @@ from spacy.tokens import Doc
 
 from cdie.extraction import rulesets
 from cdie.extraction.confidence import Confidence, ConfidenceCriteria
-from cdie.extraction.extractors.extractor import Extractor
+from cdie.extraction.extractor import Extractor
 from cdie.models import audit
 
 logger = logging.getLogger(__name__)
-
-BASE_SCORE = 0.0
 
 # Exact YYYY-MM-DD -> 0.9-1.0
 SCORE_EXACT = 0.5
@@ -109,7 +107,12 @@ DATE_KEYWORDS = rulesets.load_ruleset("auditdate")
 
 class AuditDateExtractor(Extractor[audit.AuditDate]):
     def __init__(self, nlp: Language):
-        confidence = Confidence(base=BASE_SCORE)
+        confidence = Confidence()
+        # Ignore NER and REGEX matches, because they are always True
+        confidence.set_weight(ConfidenceCriteria.NER_MATCH, 0.0)
+        confidence.set_weight(ConfidenceCriteria.REGEX_MATCH, 0.0)
+        # NEAR_KEYWORD is the only meaningful score, so set a high weight for it
+        confidence.set_weight(ConfidenceCriteria.NEAR_KEYWORD, 0.5)
         super().__init__(nlp, confidence=confidence)
 
     def extract(self, doc: Doc) -> Generator[audit.AuditDate, None, None]:
@@ -120,12 +123,11 @@ class AuditDateExtractor(Extractor[audit.AuditDate]):
         for date_format in DateFormat:
             for match in re.findall(date_format.regexp, doc.text):
                 nearest_keyword, distance = self.nearest_keyword(doc.text, match, DATE_KEYWORDS)
-                criteria = (
-                    (ConfidenceCriteria.NEAR_KEYWORD if bool(nearest_keyword) else 0)
-                    | ConfidenceCriteria.REGEX_MATCH
-                    | ConfidenceCriteria.NER_MATCH
+
+                confidence = self.confidence.calculate(
+                    criteria=ConfidenceCriteria.NEAR_KEYWORD if nearest_keyword else 0,
+                    distance=distance,
                 )
-                confidence = self.confidence.calculate(criteria=criteria, distance=distance)
                 logger.info(
                     f"Date format {date_format.name} found: {match}, confidence: {confidence}"
                 )

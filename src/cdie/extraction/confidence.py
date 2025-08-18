@@ -31,7 +31,7 @@ class ConfidenceCriteria(IntFlag):
     NER_MATCH = 1 << 2  # 4
 
 
-SCORES: dict[int, float] = {
+WEIGHTS: dict[int, float] = {
     ConfidenceCriteria.NEAR_KEYWORD: NEAR_KEYWORD,
     ConfidenceCriteria.REGEX_MATCH: REGEX_MATCH,
     ConfidenceCriteria.NER_MATCH: NER_MATCH,
@@ -49,15 +49,15 @@ class Confidence:
         self,
         base: float = 0.0,
         *,
-        scores: dict[int, float] = SCORES,
+        weights: dict[int, float] = WEIGHTS,
         penalize: bool = True,
     ):
         self.base = base
-        self.scores = scores
+        self.weights = weights
         self.penalize = penalize
 
-    def set_score(self, criteria: ConfidenceCriteria, score: float):
-        self.scores[criteria] = score
+    def set_weight(self, criteria: ConfidenceCriteria, score: float):
+        self.weights[criteria] = score
 
     def calculate_distance_penalty(
         self,
@@ -77,7 +77,7 @@ class Confidence:
         if distance < no_penalty_threshold:
             return 0.0
 
-        near_keyword_score = self.scores[ConfidenceCriteria.NEAR_KEYWORD]
+        near_keyword_score = self.weights[ConfidenceCriteria.NEAR_KEYWORD]
 
         return (
             near_keyword_score
@@ -88,20 +88,20 @@ class Confidence:
     def _get_criterion_boost(self, criteria: int, criterion: ConfidenceCriteria) -> float:
         """Get boost or penalty for a single criterion."""
         if criteria & criterion:
-            boost = self.scores[criterion]
-            logger.info(f"{criterion.name}, +{boost}")
+            boost = self.weights[criterion]
+            logger.debug(f"{criterion.name}, +{boost}")
             return boost
         elif self.penalize:
-            penalty = -self.scores[criterion]
-            logger.info(f"No {criterion.name}, {penalty}")
+            penalty = -self.weights[criterion]
+            logger.debug(f"No {criterion.name}, {penalty}")
             return penalty
         return 0.0
 
     def _get_combo_boost(self, criteria: int, combo_key: int) -> float:
         """Get boost for a combination of criteria."""
         if criteria & combo_key == combo_key:
-            boost = self.scores[combo_key]
-            logger.info(f"Combo {combo_key}, +{boost}")
+            boost = self.weights[combo_key]
+            logger.debug(f"Combo {combo_key}, +{boost}")
             return boost
         return 0.0
 
@@ -135,7 +135,7 @@ class Confidence:
               gradual penalty for 20-50, steeper penalty for 50-100, max penalty for 100+
             - Final confidence is capped at 1.0
         """
-        logger.info(f"Base score: {self.base=}")
+        logger.debug(f"Base score: {self.base=}")
 
         # Calculate individual criteria boosts
         individual_criteria_score = sum(
@@ -162,17 +162,17 @@ class Confidence:
         distance_penalty = self.calculate_distance_penalty(
             distance, no_penalty_threshold, penalty_threshold
         )
-        logger.info(f"Penalty for distance {distance}: {distance_penalty:.3f}")
+        logger.debug(f"Penalty for distance {distance}: {distance_penalty:.3f}")
 
         # Sum all boosts (including NEAR_KEYWORD boost)
         score = individual_criteria_score + combo_criteria_score - distance_penalty
-        logger.info(
+        logger.debug(
             f"{individual_criteria_score=} + {combo_criteria_score=} - "
             f"{distance_penalty=} = {score=:.2f}"
         )
 
         confidence = min(1.0, self.base + score + boost)
-        logger.info(f"Confidence: {self.base=} + {score=} + {boost=} = {confidence:.2f}")
+        logger.debug(f"Confidence: {self.base=} + {score=} + {boost=} = {confidence:.2f}")
         return confidence
 
 

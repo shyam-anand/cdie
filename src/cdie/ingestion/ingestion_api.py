@@ -19,6 +19,7 @@ async def create(
     date: bool = Query(default=True),
     supplier: bool = Query(default=True),
     findings: bool = Query(default=True),
+    generate_report: bool = Query(default=True),
 ):
     if not upload_file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
@@ -40,6 +41,7 @@ async def create(
         uploaded_file,
         request_id,
         extract_types,
+        generate_report,
     )
     logger.info(f"Submitted {uploaded_file} for processing")
 

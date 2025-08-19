@@ -1,5 +1,5 @@
-import uuid
+from datetime import datetime
 
 
 def get_request_id() -> str:
-    return str(uuid.uuid4())
+    return datetime.now().strftime("%Y%m%d%H%M%S")

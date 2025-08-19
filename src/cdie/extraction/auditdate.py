@@ -5,12 +5,12 @@ from enum import Enum
 from typing import Generator
 
 from spacy.language import Language
-from spacy.tokens import Doc
 
-from cdie.extraction import rulesets
+from cdie.extraction.textutils import keywords
 from cdie.extraction.confidence import Confidence, ConfidenceCriteria
 from cdie.extraction.extractor import Extractor
 from cdie.models import audit
+from cdie.ingestion.pdfparser import PageData
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,8 @@ MONTH_NAMES = [
 ]
 
 MONTH_NAMES_REGEX = r"\b(?:" + "|".join(MONTH_NAMES) + r")\b"
+
+DATE_KEYWORDS = keywords.load_keywords("auditdate")
 
 
 class DateFormat(Enum):
@@ -85,12 +87,12 @@ class DateFormat(Enum):
         is_iso: bool = False,
         formats: list[str] = [],
     ):
-        self.regexp = regexp
+        self.regexp = re.compile(regexp, re.IGNORECASE)
         self.score = score
         self.is_iso = is_iso
         self.formats = formats
 
-    def to_date(self, date_string: str) -> date:
+    def normalize(self, date_string: str) -> date:
         if self.is_iso:
             return datetime.fromisoformat(date_string).date()
 
@@ -102,9 +104,6 @@ class DateFormat(Enum):
         raise ValueError(f"Invalid date string: {date_string}")
 
 
-DATE_KEYWORDS = rulesets.load_ruleset("auditdate")
-
-
 class AuditDateExtractor(Extractor[audit.AuditDate]):
     def __init__(self, nlp: Language):
         confidence = Confidence()
@@ -112,25 +111,39 @@ class AuditDateExtractor(Extractor[audit.AuditDate]):
         confidence.set_weight(ConfidenceCriteria.NER_MATCH, 0.0)
         confidence.set_weight(ConfidenceCriteria.REGEX_MATCH, 0.0)
         # NEAR_KEYWORD is the only meaningful score, so set a high weight for it
-        confidence.set_weight(ConfidenceCriteria.NEAR_KEYWORD, 0.5)
+        confidence.set_weight(ConfidenceCriteria.NEAR_KEYWORD, 0.3)
         super().__init__(nlp, confidence=confidence)
 
-    def extract(self, doc: Doc) -> Generator[audit.AuditDate, None, None]:
+    def extract(self, page_data: PageData) -> Generator[audit.AuditDate, None, None]:
         """Extracts audit dates from text.
         This method first looks for date patterns, and then checks if it's near a date
         keyword.
         """
         for date_format in DateFormat:
-            for match in re.findall(date_format.regexp, doc.text):
-                nearest_keyword, distance = self.nearest_keyword(doc.text, match, DATE_KEYWORDS)
+            for match in date_format.regexp.findall(page_data.text):
+                nearest_keyword, distance = self.nearest_keyword(
+                    page_data.text, match, DATE_KEYWORDS
+                )
+
+                # The nearer the keyword, the higher the boost
+                # If over 200 characters, penalize
+                distance_boost = (1.0 - (distance / 200)) if distance > -1 else 0.0
 
                 confidence = self.confidence.calculate(
-                    criteria=ConfidenceCriteria.NEAR_KEYWORD if nearest_keyword else 0,
+                    criteria=ConfidenceCriteria.NEAR_KEYWORD if distance > -1 else 0,
                     distance=distance,
+                    boost=distance_boost,
                 )
                 logger.info(
                     f"Date format {date_format.name} found: {match}, confidence: {confidence}"
                 )
-                if confidence > self.confidence_threshold:
-                    date = date_format.to_date(match)
-                    yield audit.AuditDate(date=date, confidence=confidence)
+
+                date = date_format.normalize(match)
+                yield audit.AuditDate(
+                    date=date,
+                    confidence=confidence,
+                    context={
+                        "page_number": page_data.page_number,
+                        "keyword": nearest_keyword,
+                    },
+                )

@@ -4,6 +4,7 @@ import re
 from typing import Iterable
 
 import pdfplumber
+from pydantic import BaseModel
 from pdfplumber.pdf import PDF
 from pdfplumber.table import Table
 
@@ -13,6 +14,13 @@ logger = logging.getLogger(__name__)
 
 
 NON_LATIN_RE = re.compile(r"[^\x00-\x7f]")
+
+
+class PageData(BaseModel):
+    page_number: int
+    text: str
+    tables: list[list[list[str | None]]]
+    method: str
 
 
 class PdfParser:
@@ -26,7 +34,7 @@ class PdfParser:
                 if cells:
                     yield cells
 
-    def extract_text_from_pdf(self, pdf: PDF, remove_non_latin: bool = True) -> Iterable[str]:
+    def extract_text_from_pdf(self, pdf: PDF, remove_non_latin: bool = True) -> Iterable[PageData]:
         try:
             for page in pdf.pages:
                 logger.debug(f"On page {page.page_number}")
@@ -40,7 +48,13 @@ class PdfParser:
 
                 extracted_text = page.extract_text()
                 text = NON_LATIN_RE.sub("", extracted_text) if remove_non_latin else extracted_text
-                yield text
+
+                yield PageData(
+                    page_number=page.page_number,
+                    text=text,
+                    tables=page.extract_tables(),
+                    method="pdfplumber",
+                )
 
         except Exception as e:
             logger.error(f"Error extracting text from {pdf}: {e}")
@@ -58,14 +72,20 @@ class PdfParser:
     def parse(
         self,
         file_path: pathlib.Path,
-    ) -> Iterable[str]:
+    ) -> Iterable[PageData]:
         pdf = self._open_pdf_file(file_path)
         logger.info(f"Extracting from {file_path} ")
 
-        for text in self.extract_text_from_pdf(pdf):
-            if not text:
+        was_extracted = False
+        for page_data in self.extract_text_from_pdf(pdf):
+            if not page_data.text:
                 continue
 
-            logger.debug(f"Processing text: {text[:500]}")
+            logger.debug(f"Processing text: {page_data.text[:500]}")
 
-            yield text
+            was_extracted = True
+            yield page_data
+
+        if not was_extracted:
+            logger.warning(f"No text extracted from {file_path}")
+            # TODO Use OCR to extract text

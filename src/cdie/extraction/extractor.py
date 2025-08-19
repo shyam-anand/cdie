@@ -3,9 +3,9 @@ import logging
 from typing import Generic, Iterable, NamedTuple, TypeVar
 
 from spacy.language import Language
-from spacy.tokens import Doc
 
 from cdie.extraction.confidence import Confidence
+from cdie.ingestion.pdfparser import PageData
 from cdie.models.audit import Extracted
 
 logger = logging.getLogger(__name__)
@@ -76,5 +76,5 @@ class Extractor(abc.ABC, Generic[T]):
         return no_nearest_keyword
 
     @abc.abstractmethod
-    def extract(self, doc: Doc) -> Iterable[T]:
+    def extract(self, page_data: PageData) -> Iterable[T]:
         pass

@@ -1,6 +1,6 @@
 import abc
 import datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, field_serializer
 
@@ -13,6 +13,7 @@ def name_validator(v: str | None) -> str | None:
 
 class Extracted(abc.ABC, BaseModel):
     confidence: float
+    context: dict[str, Any] | None = None
 
     @field_serializer("confidence")
     def serialize_confidence(self, v: float) -> float:
@@ -38,7 +39,11 @@ class AuditDate(Extracted):
 
 
 class Finding(Extracted):
-    issue: str
+    id: str
+    category: str
+    severity: str
+    source_method: str
+    text: str
 
 
 class AuditReport(BaseModel):

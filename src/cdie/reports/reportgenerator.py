@@ -1,6 +1,6 @@
 import argparse
 import logging
-from typing import Any, Callable, Iterable
+from typing import Iterable
 
 from cdie import config
 from cdie.extraction import extractor
@@ -12,8 +12,6 @@ logger = logging.getLogger(__name__)
 REPORTS = config.DATA_ROOT / "reports"
 INGESTION = config.DATA_ROOT / "ingestion"
 
-
-DictToExtracted = Callable[[dict[str, Any]], extractor.T]
 
 CONFIDENCE_THRESHOLD = config.get_config("confidence_threshold") or 0.60
 
@@ -47,27 +45,23 @@ class ReportGenerator:
         if report is None:
             logger.warning("No report provided, skipping save")
             return
-        self._storage.write(self._request_id, "report", report.model_dump())
+        self._storage.write(self._request_id, "report", report)
         logger.info(f"Report saved for {self._request_id}")
 
-    def read_candidates(self, type: str) -> list[dict[str, Any]]:
+    def read_candidates(self, model: type[extractor.T]) -> list[extractor.T]:
         ingestion_storage = jsonfilestore.JsonFileStore(INGESTION)
-        return ingestion_storage.read_list(self._request_id, type)
+        return ingestion_storage.read_list(self._request_id, model.__name__, model)
 
-    def _get_candidates_above_threshold(
-        self, type: str, mapper: DictToExtracted[extractor.T]
-    ) -> Iterable[extractor.T]:
+    def _get_candidates_above_threshold(self, model: type[extractor.T]) -> Iterable[extractor.T]:
         """Returns all candidates with confidence above threshold."""
         return filter(
             lambda x: x.confidence >= self._confidence_threshold,
-            map(mapper, self.read_candidates(type)),
+            self.read_candidates(model),
         )
 
-    def _get_best_candidate(
-        self, type: str, mapper: DictToExtracted[extractor.T]
-    ) -> extractor.T | None:
+    def _get_best_candidate(self, model: type[extractor.T]) -> extractor.T | None:
         """Returns the best candidate by confidence."""
-        candidates = list(self._get_candidates_above_threshold(type, mapper))
+        candidates = list(self._get_candidates_above_threshold(model))
         if not candidates:
             return None
         return max(
@@ -80,9 +74,7 @@ class ReportGenerator:
         Returns the best auditor candidate by confidence, and attempts to fill in missing
         fields.
         """
-        candidates = list(
-            self._get_candidates_above_threshold("Auditor", audit.Auditor.model_validate)
-        )
+        candidates = list(self._get_candidates_above_threshold(audit.Auditor))
         candidates.sort(key=lambda x: x.confidence)
         if not candidates:
             return None
@@ -110,9 +102,9 @@ class ReportGenerator:
         """
         logger.info(f"Finalizing report for {self._request_id}")
         auditor = self._get_auditor()
-        audit_date = self._get_best_candidate("AuditDate", audit.AuditDate.model_validate)
-        suppliers = self._get_candidates_above_threshold("Supplier", audit.Supplier.model_validate)
-        findings = self._get_candidates_above_threshold("Finding", audit.Finding.model_validate)
+        audit_date = self._get_best_candidate(audit.AuditDate)
+        suppliers = self._get_candidates_above_threshold(audit.Supplier)
+        findings = self._get_candidates_above_threshold(audit.Finding)
         report = audit.AuditReport(
             auditor=auditor,  # type: ignore
             audit_date=audit_date,  # type: ignore
@@ -126,7 +118,4 @@ class ReportGenerator:
 
 def get_report(request_id: str) -> audit.AuditReport | None:
     """Returns the report for the given request ID."""
-    report_dict = jsonfilestore.JsonFileStore(REPORTS).read(request_id, "report")
-    if report_dict and isinstance(report_dict, dict):
-        return audit.AuditReport.model_validate(report_dict)
-    return None
+    return jsonfilestore.JsonFileStore(REPORTS).read(request_id, "report", audit.AuditReport)

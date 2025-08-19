@@ -1,6 +1,8 @@
 import logging
 import pathlib
-from typing import Any, Literal
+from datetime import datetime
+from pydantic import BaseModel, Field
+from typing import Literal
 
 import spacy
 from spacy.language import Language
@@ -47,49 +49,55 @@ def _get_storage() -> jsonfilestore.JsonFileStore:
     return jsonfilestore.JsonFileStore(INGESTION_DATA_DIR)
 
 
+class Job(BaseModel):
+    request_id: str
+    status: str = "submitted"
+    start_time: datetime = Field(default_factory=datetime.now)
+    end_time: datetime | None = None
+    extract_types: list[ExtractorType]
+    generate_report: bool
+
+
 class IngestionPipeline:
     def __init__(self, storage: jsonfilestore.JsonFileStore | None = None):
         self._storage = storage or _get_storage()
 
-    def read_extracted(self, request_id: str, type: str) -> list[dict[str, Any]]:
-        return self._storage.read_list(request_id, type)
-
-    def _set_status(self, request_id: str, status: str):
-        self._storage.write(request_id, "status", {"status": status})
+    def _save_job_info(self, job: Job):
+        self._storage.write(job.request_id, "job", job)
 
     def run(
         self,
         file_path: pathlib.Path,
-        request_id: str,
-        extract_types: list[ExtractorType],
-        generate_report: bool = True,
+        job: Job,
     ) -> None:
-        logger.info(f"Starting: {request_id}")
-        self._set_status(request_id, "running")
+        logger.info(f"Starting: {job.request_id}")
+        job.status = "running"
+        self._save_job_info(job)
 
         nlp = get_nlp()
         pdf_parser = pdfparser.PdfParser()
-        extractors = [EXTRACTOR_CLASSES[extract_type](nlp) for extract_type in extract_types]
+        extractors = [EXTRACTOR_CLASSES[extract_type](nlp) for extract_type in job.extract_types]
 
-        for text in pdf_parser.parse(file_path):
-            doc = nlp(text)
+        for page_data in pdf_parser.parse(file_path):
             for info_extractor in extractors:
-                for info in info_extractor.extract(doc):
-                    self._storage.append(request_id, info.__class__.__name__, info.model_dump())
-        logger.info(f"Extraction completed for {request_id}")
+                for info in info_extractor.extract(page_data):
+                    if info.confidence > 0.0:
+                        self._storage.append(job.request_id, info.__class__.__name__, info)
+        logger.info(f"Extraction completed for {job.request_id}")
 
-        if generate_report:
-            report_generator = reportgenerator.ReportGenerator(request_id)
+        if job.generate_report:
+            report_generator = reportgenerator.ReportGenerator(job.request_id)
             report_generator.finalize()
 
-        self._set_status(request_id, "completed")
-        logger.info(f"Completed: {request_id}")
+        job.status = "completed"
+        self._save_job_info(job)
+        logger.info(f"Completed: {job.request_id}")
 
 
 def get_status(request_id: str) -> str | None:
-    status_dict = _get_storage().read(request_id, "status")
-    if status_dict and isinstance(status_dict, dict):
-        return status_dict["status"]
+    job = _get_storage().read(request_id, "job", Job)
+    if job:
+        return job.status
     return None
 
 
@@ -100,4 +108,7 @@ def run(
     generate_report: bool = True,
 ) -> None:
     ingestion_pipeline = IngestionPipeline(_get_storage())
-    ingestion_pipeline.run(file_path, request_id, extract_types, generate_report)
+    ingestion_pipeline.run(
+        file_path,
+        Job(request_id=request_id, extract_types=extract_types, generate_report=generate_report),
+    )

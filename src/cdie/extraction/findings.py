@@ -1,17 +1,17 @@
-import re
 import logging
-import pandas as pd
+import re
 from typing import Iterable
 
+import pandas as pd
 from spacy.language import Language
 from spacy.tokens import Doc
 from spacy.tokens.span import Span
 
-from cdie.extraction.textutils import keywords
 from cdie.extraction.confidence import Confidence, ConfidenceCriteria
 from cdie.extraction.extractor import Extractor
-from cdie.models import audit
+from cdie.extraction.textutils import keywords
 from cdie.ingestion.pdfparser import PageData
+from cdie.models import audit
 
 logger = logging.getLogger(__name__)
 

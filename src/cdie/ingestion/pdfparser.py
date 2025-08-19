@@ -4,9 +4,9 @@ import re
 from typing import Iterable
 
 import pdfplumber
-from pydantic import BaseModel
 from pdfplumber.pdf import PDF
 from pdfplumber.table import Table
+from pydantic import BaseModel
 
 from cdie import config
 

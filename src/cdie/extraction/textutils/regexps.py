@@ -13,11 +13,14 @@ PERSON_NAME = re.compile(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]*\.?)+\b")
 # Captures org names (e.g. The ABC Company, The XYZ Corporation)
 ORGANIZATION_NAME = re.compile(r"\b(?:the\s+)?(?:[A-Z][a-zA-Z&]+(?:\s+[A-Z][a-zA-Z&]+)*)\n")
 
+
 def is_person_name(text: str) -> bool:
     return PERSON_NAME.match(text) is not None
 
+
 def is_company_name(text: str) -> bool:
     return COMPANY_NAME.match(text) is not None
+
 
 def is_organization_name(text: str) -> bool:
     return ORGANIZATION_NAME.match(text) is not None

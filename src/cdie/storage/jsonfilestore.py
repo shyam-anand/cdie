@@ -2,7 +2,9 @@ import json
 import logging
 import pathlib
 from typing import TypeVar
+
 from pydantic import BaseModel
+
 from cdie import config
 
 logger = logging.getLogger(__name__)

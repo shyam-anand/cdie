@@ -1,10 +1,10 @@
 import logging
 import pathlib
 from datetime import datetime
-from pydantic import BaseModel, Field
 from typing import Literal
 
 import spacy
+from pydantic import BaseModel, Field
 from spacy.language import Language
 
 from cdie import config

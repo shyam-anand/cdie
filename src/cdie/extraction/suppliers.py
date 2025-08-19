@@ -7,8 +7,8 @@ from spacy.language import Language
 from cdie.extraction.confidence import Confidence, ConfidenceCriteria
 from cdie.extraction.extractor import Extractor, NearestKeyword, no_nearest_keyword
 from cdie.extraction.textutils import regexps
-from cdie.models import audit
 from cdie.ingestion.pdfparser import PageData
+from cdie.models import audit
 
 SUPPLIER_KEYWORDS_REGEXP = [
     re.compile(regexp, re.IGNORECASE)

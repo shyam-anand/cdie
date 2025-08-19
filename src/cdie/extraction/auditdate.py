@@ -6,11 +6,11 @@ from typing import Generator
 
 from spacy.language import Language
 
-from cdie.extraction.textutils import keywords
 from cdie.extraction.confidence import Confidence, ConfidenceCriteria
 from cdie.extraction.extractor import Extractor
-from cdie.models import audit
+from cdie.extraction.textutils import keywords
 from cdie.ingestion.pdfparser import PageData
+from cdie.models import audit
 
 logger = logging.getLogger(__name__)
 

@@ -4,11 +4,11 @@ from typing import Iterable
 
 from spacy.language import Language
 
-from cdie.extraction.textutils import regexps
 from cdie.extraction.confidence import ConfidenceCriteria
 from cdie.extraction.extractor import Extractor
-from cdie.models import audit
+from cdie.extraction.textutils import regexps
 from cdie.ingestion.pdfparser import PageData
+from cdie.models import audit
 
 AUDITOR_KEYWORDS = [
     "auditor",

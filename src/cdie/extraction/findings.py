@@ -95,8 +95,12 @@ class FindingsExtractor(Extractor[audit.Finding]):
         return "medium"  # default
 
     def calculate_confidence(self, text: str, method: str, keyword_count: int = 0) -> float:
-        """Calculate confidence score for the finding"""
-        base_confidence = {"structured": 0.9, "table": 0.8, "nlp": 0.6, "ocr": 0.5}.get(method, 0.5)
+        """Calculate confidence score for the finding
+
+        Findings uses a different confidence logic that the others, because findings are
+        much less structured.
+        """
+        base_confidence = {"structured": 0.9, "table": 0.8, "nlp": 0.6}.get(method, 0.5)
 
         # Adjust based on keyword density
         if keyword_count > 0:
@@ -109,7 +113,7 @@ class FindingsExtractor(Extractor[audit.Finding]):
         elif len(text) < 30:
             base_confidence = max(base_confidence - 0.2, 0.1)
 
-        return round(base_confidence, 2)
+        return round(base_confidence, 4)
 
     def identify_finding_sections(self, text: str) -> list[str]:
         """Identify sections likely to contain findings"""
@@ -264,21 +268,32 @@ class FindingsExtractor(Extractor[audit.Finding]):
 
                 # Extract findings from relevant columns
                 for col in finding_columns:
+                    # Iterate through all non-null values in the current column
+                    # dropna() removes empty values to avoid processing empty cells
                     for idx, value in df[col].dropna().items():  # type: ignore
+                        # Filter for relevant text content - skip short entries that are unlikely
+                        # to be meaningful findings
                         if isinstance(value, str) and len(value) > 20:
                             category = self.categorize_finding(value)
                             severity = self.determine_severity(value)
                             confidence = self.calculate_confidence(value, "table")
 
-                            # Create context from other columns in the same row
-                            context_parts = []
+                            # Build context by collecting data from other columns in the same row
+                            # This provides additional information about the finding
+                            # (e.g., department, date, auditor)
+                            context_parts: list[str] = []
                             for other_col in df.columns:
-                                if other_col != col and pd.notna(df.iloc[idx][other_col]):  # type: ignore
+                                # Filter for non-null values
+                                if other_col != col and pd.notna(
+                                    df.iloc[idx][other_col]  # type: ignore
+                                ):
+                                    # Format as "column_name: value" for readability
                                     context_parts.append(f"{other_col}: {df.iloc[idx][other_col]}")  # type: ignore
-                            context = " | ".join(context_parts)  # type: ignore
+
+                            context = " | ".join(context_parts)
 
                             self._findings_count += 1
-                            finding = audit.Finding(
+                            yield audit.Finding(
                                 id=f"F{self._findings_count:03d}",
                                 text=value,
                                 category=category,
@@ -287,8 +302,6 @@ class FindingsExtractor(Extractor[audit.Finding]):
                                 context={"context": context, "page_number": page_number},
                                 source_method="table_extraction",
                             )
-
-                            yield finding
 
             except Exception as e:
                 logger.warning(f"Error processing table: {e}")

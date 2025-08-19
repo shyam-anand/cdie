@@ -21,6 +21,10 @@ class ReportResponse(BaseModel):
     "/{request_id}",
     response_model=ReportResponse,
     response_model_exclude_none=True,
+    description="""
+    Get the report for a given request_id. If the report is not ready, the status will be "pending".
+    """,
+    summary="Get a report",
 )
 async def get(request_id: str):
     if status := ingestion_pipeline.get_status(request_id):
